@@ -1,0 +1,56 @@
+CREATE OR REPLACE PROCEDURE IADE_ET (
+PRM_KITAP_ID IN NUMBER,
+PRM_OGRENCI_ID IN NUMBER,
+PRM_KITAP_ODUNC_ID IN NUMBER,
+PRM_SONUC OUT NUMBER,
+PRM_SONUC_ACIKLAMA OUT VARCHAR2) is
+row_kitap kitap%rowtype;
+row_ogrenci ogrenci%rowtype;
+row_kitap_odunc kitap_odunc%rowtype;
+row_iade_sure kitap_iade_sure%rowtype;
+l_odunc_suresi number; 
+
+BEGIN
+    select k.* into row_kitap
+    from kitap k
+    where k.id = prm_kitap_id;
+
+    select o.* into row_ogrenci
+    from ogrenci o
+    where o.id = prm_ogrenci_id;
+
+   
+
+
+    IF row_kitap.durum != 'O' then
+    dbms_output.put_line('Kitap iade alýnabilir!');
+    PRM_SONUC := -1;
+     ELSE 
+    dbms_output.put_line('Kitap iade alýnamaz!');
+    end if;
+    
+    
+    IF (row_kitap_odunc.beklenen_teslim_tarihi != row_kitap_odunc.gerceklesen_teslim_tarihi) then
+    dbms_output.put_line('Iade etme zamaný geçmiþ');
+    PRM_SONUC := -2;
+    ELSE 
+    dbms_output.put_line('Teþekkür ederiz');
+    UPDATE KITAP_ODUNC KO
+    SET KO.gerceklesen_teslim_tarihi=SYSDATE, KO.version= KO.version+1
+    WHERE KO.gerceklesen_teslim_tarihi = null
+    OR KO.gerceklesen_teslim_tarihi != null;
+    end if;
+
+    select s.* into row_iade_sure
+    from kitap_iade_sure s
+    where s.id = row_kitap.iade_sure_id;
+
+    UPDATE KITAP k
+    SET k.durum='M', k.version= k.version+1
+    WHERE k.ID         = PRM_KITAP_ID
+    AND k.DURUM        = 'O'
+    AND k.VERSION      = row_kitap.version ;
+    DBMS_OUTPUT.PUT_LINE('Durum Güncelleme Baþarýlý');
+    PRM_SONUC_ACIKLAMA := 'Durum Güncelleme Baþarýlý!';
+
+END IADE_ET;
